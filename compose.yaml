@@ -17,4 +17,4 @@ services:
     command:
       - sh
       - -lc
-      - python -m app.img2md --input-dir /workspace/in --output-dir /workspace/out --model-id "$MODEL_ID" --combine-output
+      - python -m app.img2md --input-dir /workspace/in --output-dir /workspace/out --model-id "$${MODEL_ID}" --combine-output
