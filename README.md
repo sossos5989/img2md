@@ -32,6 +32,7 @@ img2md/
 
 - `in/` 안의 이미지를 이름순으로 순회합니다.
 - 각 이미지마다 `out/<원본파일명>.md`를 생성합니다. 예: `slide01.png -> slide01.png.md`
+- 기본값은 기존 결과가 있어도 덮어쓰기입니다.
 - `out/manifest.json`에 처리 결과를 남깁니다.
 - `--combine-output` 옵션이 켜지면 `out/combined.md`도 함께 생성합니다.
 
@@ -95,7 +96,7 @@ docker run --rm --gpus all \
   --output-dir /workspace/out \
   --model-id Qwen/Qwen2.5-VL-7B-Instruct \
   --max-new-tokens 3072 \
-  --overwrite \
+  --no-overwrite \
   --combine-output
 ```
 

@@ -75,9 +75,9 @@ def parse_args() -> argparse.Namespace:
         help="Optional file containing a custom prompt.",
     )
     parser.add_argument(
-        "--overwrite",
+        "--no-overwrite",
         action="store_true",
-        help="Overwrite existing markdown files in the output directory.",
+        help="Skip files when the markdown output already exists.",
     )
     parser.add_argument(
         "--combine-output",
@@ -245,7 +245,7 @@ def main() -> int:
 
     for image_path in images:
         output_path = output_dir / f"{image_path.name}.md"
-        if output_path.exists() and not args.overwrite:
+        if output_path.exists() and args.no_overwrite:
             print(f"Skipping existing output: {output_path.name}", flush=True)
             results.append(
                 ConversionResult(
