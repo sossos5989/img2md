@@ -27,17 +27,8 @@ SUPPORTED_EXTENSIONS = {
 DEFAULT_MIN_PIXELS = 256 * 28 * 28
 DEFAULT_MAX_PIXELS = 1280 * 28 * 28
 
-DEFAULT_PROMPT = """Convert this image into clean Markdown.
-
-Rules:
-- Output Markdown only.
-- Preserve the original reading order.
-- Keep the original language found in the image.
-- Reproduce headings, paragraphs, lists, tables, and code blocks when present.
-- Use GitHub-flavored Markdown tables when table structure is visible.
-- For charts, diagrams, slides, or UI screens, summarize visible text and structure with Markdown headings and bullet points.
-- Do not invent text. If part of the text is unreadable, write [unclear].
-"""
+DEFAULT_PROMPT = """Convert this image to Markdown.
+Return Markdown only."""
 
 
 @dataclass

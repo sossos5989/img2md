@@ -99,6 +99,21 @@ docker run --rm --gpus all \
   --combine-output
 ```
 
+(임시)
+```
+cd /mnt/c/study/graduation/img2md
+mkdir -p .docker-tmp
+printf '{}' > .docker-tmp/config.json
+
+DOCKER_CONFIG="$(pwd)/.docker-tmp" docker build -t img2md-qwen25vl .
+
+docker run --rm --gpus all \
+  -v "$(pwd)/in:/workspace/in" \
+  -v "$(pwd)/out:/workspace/out" \
+  -v "$(pwd)/hf_cache:/models/hf" \
+  -v "$(pwd)/torch_cache:/models/torch" \
+  img2md-qwen25vl
+```
 ## 로컬 Python 실행
 
 Docker 없이도 실행할 수 있습니다.
