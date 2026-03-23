@@ -39,6 +39,12 @@ img2md/
 
 첫 실행 시 모델이 Hugging Face에서 다운로드되므로 네트워크가 필요합니다. 실제 추론은 GPU가 있는 환경을 기준으로 구성했습니다.
 
+`HF_TOKEN`이 있으면 다운로드 제한이 완화됩니다.
+
+```bash
+HF_TOKEN=hf_xxx docker compose up --build
+```
+
 ### 1. 폴더 준비
 
 ```bash

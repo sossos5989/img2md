@@ -13,6 +13,7 @@ services:
       HF_HOME: /models/hf
       TRANSFORMERS_CACHE: /models/hf
       TORCH_HOME: /models/torch
+      HF_TOKEN: ${HF_TOKEN:-}
       MODEL_ID: ${MODEL_ID:-Qwen/Qwen2.5-VL-3B-Instruct}
     command:
       - sh

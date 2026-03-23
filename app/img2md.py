@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import time
 from dataclasses import dataclass
@@ -132,24 +133,32 @@ class Img2MdConverter:
         self.max_new_tokens = max_new_tokens
         self.prompt = prompt
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.hf_token = os.getenv("HF_TOKEN") or None
+        print("Loading processor...", flush=True)
         self.processor = AutoProcessor.from_pretrained(
             model_id,
             min_pixels=min_pixels,
             max_pixels=max_pixels,
+            use_fast=False,
+            token=self.hf_token,
         )
+        print("Processor ready.", flush=True)
         model_kwargs = {
             "torch_dtype": torch.float16 if self.device == "cuda" else torch.float32,
             "low_cpu_mem_usage": True,
+            "token": self.hf_token,
         }
         if self.device == "cuda":
             model_kwargs["device_map"] = "auto"
             model_kwargs["attn_implementation"] = "sdpa"
+        print("Loading model weights... This can take several minutes on the first run.", flush=True)
         self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
             model_id,
             **model_kwargs,
         )
         if self.device == "cpu":
             self.model.to("cpu")
+        print("Model ready.", flush=True)
 
     def convert_image(self, image_path: Path) -> str:
         conversation = [
@@ -227,6 +236,10 @@ def main() -> int:
 
     print(f"Loading model: {args.model_id}", flush=True)
     print(f"Device: {'GPU' if torch.cuda.is_available() else 'CPU'}", flush=True)
+    if os.getenv("HF_TOKEN"):
+        print("HF_TOKEN detected.", flush=True)
+    else:
+        print("HF_TOKEN not set. Public download limits may be slower.", flush=True)
     converter = Img2MdConverter(
         model_id=args.model_id,
         min_pixels=args.min_pixels,
