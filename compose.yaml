@@ -1,0 +1,20 @@
+services:
+  img2md:
+    build:
+      context: .
+    image: img2md-qwen25vl
+    gpus: all
+    volumes:
+      - ./in:/workspace/in
+      - ./out:/workspace/out
+      - ./hf_cache:/models/hf
+      - ./torch_cache:/models/torch
+    environment:
+      HF_HOME: /models/hf
+      TRANSFORMERS_CACHE: /models/hf
+      TORCH_HOME: /models/torch
+      MODEL_ID: ${MODEL_ID:-Qwen/Qwen2.5-VL-3B-Instruct}
+    command:
+      - sh
+      - -lc
+      - python -m app.img2md --input-dir /workspace/in --output-dir /workspace/out --model-id "$MODEL_ID" --combine-output
