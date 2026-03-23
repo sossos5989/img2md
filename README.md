@@ -1,6 +1,6 @@
 # img2md
 
-`Qwen2.5-VL`로 `in/` 폴더의 이미지를 읽어서 `out/` 폴더에 Markdown 파일로 저장하는 배치 변환기입니다.
+`in/` 폴더의 이미지를 읽어서 `out/` 폴더에 Markdown 파일로 저장하는 배치 변환기입니다. 기본 모델은 `Qwen/Qwen2.5-VL-7B-Instruct`이며, CLI에서 다른 VLM preset으로 바꿔 실행할 수 있습니다.
 
 ## 구조
 
@@ -35,6 +35,23 @@ img2md/
 - 기본값은 기존 결과가 있어도 덮어쓰기입니다.
 - `out/manifest.json`에 처리 결과를 남깁니다.
 - `--combine-output` 옵션이 켜지면 `out/combined.md`도 함께 생성합니다.
+
+## 모델 선택
+
+현재 내장된 preset:
+
+- `qwen7b`: `Qwen/Qwen2.5-VL-7B-Instruct`
+- `qwen3b`: `Qwen/Qwen2.5-VL-3B-Instruct`
+- `paddleocr_vl`: `PaddlePaddle/PaddleOCR-VL`
+- `mineru2_5`: `opendatalab/MinerU2.5-2509-1.2B`
+
+preset 목록 확인:
+
+```bash
+python -m app.img2md --list-model-presets
+```
+
+기본 preset은 `qwen7b`입니다.
 
 ## Docker 실행
 
@@ -76,13 +93,13 @@ docker run --rm --gpus all \
 
 ## 옵션 예시
 
-기본 모델은 `Qwen/Qwen2.5-VL-3B-Instruct`입니다. 더 큰 모델을 쓰려면 `MODEL_ID`를 바꾸면 됩니다.
+기본값은 `qwen7b` preset입니다. Compose에서 preset을 바꾸려면:
 
 ```bash
-MODEL_ID=Qwen/Qwen2.5-VL-7B-Instruct docker compose up --build
+MODEL_PRESET=mineru2_5 docker compose up --build
 ```
 
-직접 CLI 옵션을 넘기는 것도 가능합니다.
+`docker run`에서 직접 preset을 고를 수도 있습니다.
 
 ```bash
 docker run --rm --gpus all \
@@ -94,14 +111,40 @@ docker run --rm --gpus all \
   python -m app.img2md \
   --input-dir /workspace/in \
   --output-dir /workspace/out \
-  --model-id Qwen/Qwen2.5-VL-7B-Instruct \
+  --model-preset paddleocr_vl \
   --max-new-tokens 3072 \
   --no-overwrite \
   --combine-output
 ```
 
-(임시)
+원격 모델 ID를 직접 덮어쓰는 것도 가능합니다.
+
+```bash
+docker run --rm --gpus all \
+  -v "$(pwd)/in:/workspace/in" \
+  -v "$(pwd)/out:/workspace/out" \
+  -v "$(pwd)/hf_cache:/models/hf" \
+  -v "$(pwd)/torch_cache:/models/torch" \
+  img2md-qwen25vl \
+  python -m app.img2md \
+  --input-dir /workspace/in \
+  --output-dir /workspace/out \
+  --model-preset qwen7b \
+  --model-id Qwen/Qwen2.5-VL-72B-Instruct
 ```
+
+프롬프트를 직접 바꾸고 싶으면:
+
+```bash
+python -m app.img2md \
+  --input-dir ./in \
+  --output-dir ./out \
+  --model-preset paddleocr_vl \
+  --prompt "OCR:"
+```
+
+(임시)
+```bash
 cd /mnt/c/study/graduation/img2md
 mkdir -p .docker-tmp
 printf '{}' > .docker-tmp/config.json
@@ -115,6 +158,7 @@ docker run --rm --gpus all \
   -v "$(pwd)/torch_cache:/models/torch" \
   img2md-qwen25vl
 ```
+
 ## 로컬 Python 실행
 
 Docker 없이도 실행할 수 있습니다.
@@ -123,11 +167,12 @@ Docker 없이도 실행할 수 있습니다.
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-python -m app.img2md --input-dir ./in --output-dir ./out --combine-output
+python -m app.img2md --input-dir ./in --output-dir ./out --model-preset qwen7b --combine-output
 ```
 
 ## 참고
 
-- Hugging Face Transformers의 `Qwen2.5-VL` 문서 기준으로 `AutoProcessor`와 `Qwen2_5_VLForConditionalGeneration` 흐름에 맞춰 구성했습니다.
-- 기본 해상도 토큰 범위는 VRAM 사용량을 줄이기 위해 `min_pixels=256*28*28`, `max_pixels=1280*28*28`로 잡았습니다.
+- Hugging Face Transformers의 범용 `AutoProcessor`와 `AutoModelForImageTextToText` 흐름으로 구성했습니다.
+- Qwen preset에는 기본 해상도 토큰 범위 `min_pixels=256*28*28`, `max_pixels=1280*28*28`를 적용했습니다.
+- `PaddleOCR-VL`, `MinerU2.5`는 문서 파싱 성향이 강하므로, Markdown 결과가 마음에 안 들면 `--prompt` 또는 `--prompt-file`로 별도 튜닝하는 편이 낫습니다.
 - CPU에서도 실행은 가능하지만 매우 느릴 수 있습니다.
