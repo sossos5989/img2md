@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -11,6 +12,7 @@ from pathlib import Path
 from typing import Iterable
 
 import torch
+from PIL import Image
 from transformers import AutoModelForImageTextToText, AutoProcessor
 
 SUPPORTED_EXTENSIONS = {
@@ -182,6 +184,29 @@ def get_torch_dtype(device: str) -> torch.dtype:
     return torch.float32
 
 
+def image_has_transparency(image: Image.Image) -> bool:
+    if image.mode in {"RGBA", "LA"}:
+        return True
+    if image.mode == "P" and "transparency" in image.info:
+        return True
+    return False
+
+
+def prepare_image_for_model(image_path: Path) -> tuple[Path, bool]:
+    with Image.open(image_path) as image:
+        if not image_has_transparency(image):
+            return image_path, False
+
+        rgba_image = image.convert("RGBA")
+        background = Image.new("RGBA", rgba_image.size, (255, 255, 255, 255))
+        composited = Image.alpha_composite(background, rgba_image).convert("RGB")
+
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as temp_file:
+            temp_path = Path(temp_file.name)
+        composited.save(temp_path, format="PNG")
+        return temp_path, True
+
+
 class Img2MdConverter:
     def __init__(
         self,
@@ -225,40 +250,48 @@ class Img2MdConverter:
         print("Model ready.", flush=True)
 
     def convert_image(self, image_path: Path) -> str:
+        prepared_path, is_temporary = prepare_image_for_model(image_path)
+        if is_temporary:
+            print(f"Flattened transparency onto white background: {image_path.name}", flush=True)
+
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image", "path": str(image_path)},
+                    {"type": "image", "path": str(prepared_path)},
                     {"type": "text", "text": self.prompt},
                 ],
             }
         ]
-        inputs = self.processor.apply_chat_template(
-            messages,
-            add_generation_prompt=True,
-            tokenize=True,
-            return_dict=True,
-            return_tensors="pt",
-        )
-        target_device = next(self.model.parameters()).device
-        inputs = inputs.to(target_device)
-
-        with torch.inference_mode():
-            output_ids = self.model.generate(
-                **inputs,
-                max_new_tokens=self.max_new_tokens,
-                do_sample=False,
+        try:
+            inputs = self.processor.apply_chat_template(
+                messages,
+                add_generation_prompt=True,
+                tokenize=True,
+                return_dict=True,
+                return_tensors="pt",
             )
+            target_device = next(self.model.parameters()).device
+            inputs = inputs.to(target_device)
 
-        prompt_length = inputs.input_ids.shape[1]
-        generated_ids = output_ids[:, prompt_length:]
-        markdown = self.processor.batch_decode(
-            generated_ids,
-            skip_special_tokens=True,
-            clean_up_tokenization_spaces=False,
-        )[0]
-        return markdown.strip()
+            with torch.inference_mode():
+                output_ids = self.model.generate(
+                    **inputs,
+                    max_new_tokens=self.max_new_tokens,
+                    do_sample=False,
+                )
+
+            prompt_length = inputs.input_ids.shape[1]
+            generated_ids = output_ids[:, prompt_length:]
+            markdown = self.processor.batch_decode(
+                generated_ids,
+                skip_special_tokens=True,
+                clean_up_tokenization_spaces=False,
+            )[0]
+            return markdown.strip()
+        finally:
+            if is_temporary and prepared_path.exists():
+                prepared_path.unlink()
 
 
 def write_manifest(
